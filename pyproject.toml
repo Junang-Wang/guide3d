@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "test"
+name = "guide3d"
 version = "0.1.dev1"
 description = ""
 license = { file = "LICENSE" }
@@ -35,9 +35,3 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-
-[project.scripts]
-run_env = "cathsim.console:cmd_run_env"
-visualize_agent = "cathsim.console:cmd_visualize_agent"
-train = "cathsim.console:cmd_train"
