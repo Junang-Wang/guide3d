@@ -4,7 +4,7 @@ from typing import Dict, List
 
 import cv2
 import numpy as np
-from guide3d.representations import curve
+import torch
 from guide3d.utils.utils import preprocess_tck
 from torch.utils import data
 from torchvision import transforms
@@ -40,31 +40,21 @@ def process_data(
             videoA.append(
                 dict(
                     image=imageA,
-                    mask=make_mask(tckA, uA),
+                    tck=tckA,
+                    u=uA,
                 )
             )
             videoB.append(
                 dict(
                     image=imageB,
-                    mask=make_mask(tckB, uB),
+                    tck=tckB,
+                    u=uB,
                 )
             )
         video_pairs.append(videoA)
         video_pairs.append(videoB)
 
     return video_pairs
-
-
-def make_mask(tck, u, delta=0.1):
-    """make a segmentation mask from a polyline"""
-    pts = curve.sample_spline(tck, u, delta=delta).astype(np.int32)
-
-    mask = np.zeros((1024, 1024), dtype=np.uint8)
-    pts = np.array(pts, dtype=np.int32)
-    pts = pts.reshape((-1, 1, 2))
-    cv2.polylines(mask, [pts], isClosed=False, color=(255, 0, 255), thickness=2)
-    mask = mask // 255
-    return mask
 
 
 def split_video_data(
@@ -85,12 +75,22 @@ def split_video_data(
 
 
 class Guide3D(data.Dataset):
+    """Guide3D dataset
+
+    The dataset contains images and their corresponding t, c, k, u values,
+    where:
+
+    t: knot vector
+    c: control points
+    k: degree of the spline curve
+    u: control point
+    """
+
     def __init__(
         self,
         root: str,
         annotations_file: str = "sphere.json",
         image_transform: transforms.Compose = None,
-        mask_transform: callable = None,
         split: str = "train",
         split_ratio: tuple = (0.8, 0.1, 0.1),
     ):
@@ -113,7 +113,6 @@ class Guide3D(data.Dataset):
             self.data = test_data
 
         self.image_transform = image_transform
-        self.mask_transform = mask_transform
 
     def __len__(self):
         return len(self.data)
@@ -121,12 +120,15 @@ class Guide3D(data.Dataset):
     def __getitem__(self, idx):
         sample = self.data[idx]
         img = cv2.imread(str(self.root / sample["image"]), cv2.IMREAD_GRAYSCALE)
-        mask = sample["mask"]
+        t, c, k = sample["tck"]
+        t = torch.tensor(t, dtype=torch.float32)
+        c = torch.tensor(c, dtype=torch.float32)
+        k = torch.tensor(k, dtype=torch.float32)
+
+        u = torch.tensor(sample["u"], dtype=torch.float32)
         if self.image_transform:
             img = self.image_transform(img)
-        if self.mask_transform:
-            mask = self.mask_transform(mask)
-        return img, mask
+        return img, t, c, k, u
 
 
 def visualize_mask(img, mask):
@@ -143,10 +145,10 @@ def test_dataset():
 
     dataset_path = vars.dataset_path
     dataset = Guide3D(dataset_path, "sphere_wo_reconstruct.json")
-    dataloader = data.DataLoader(dataset, batch_size=16, shuffle=True)
+    dataloader = data.DataLoader(dataset, batch_size=1, shuffle=True)
     for batch in dataloader:
-        img, mask = batch
-        print(img.shape, mask.shape)
+        img, t, c, k, u = batch
+        print(img.shape, t.shape, c.shape, k.shape, u.shape)
         break
 
 
