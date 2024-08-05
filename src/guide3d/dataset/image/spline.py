@@ -81,9 +81,9 @@ class Guide3D(data.Dataset):
     where:
 
     t: knot vector
-    c: control points
+    c: spline coefficients
     k: degree of the spline curve
-    u: control point
+    u: parameter values
     """
 
     def __init__(
