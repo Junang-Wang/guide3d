@@ -123,13 +123,18 @@ class Guide3D(data.Dataset):
     def __getitem__(self, idx):
         sample = self.data[idx]
         img = cv2.imread(str(self.root / sample["image"]), cv2.IMREAD_GRAYSCALE)
-        img = torch.tensor(img, dtype=torch.float32)
         t, c, k = sample["tck"]
+
         t = t[4:]  # first 4 values are 0
+        t = np.array(t, dtype=np.float32)
         t = torch.tensor(t, dtype=torch.float32)
+
+        c = np.array(c, dtype=np.float32)
         c = torch.tensor(c, dtype=torch.float32)
 
+        u = np.array(sample["u"], dtype=np.float32)
         u = torch.tensor(sample["u"], dtype=torch.float32)
+
         if self.image_transform:
             img = self.image_transform(img)
         return img, t, c, u
