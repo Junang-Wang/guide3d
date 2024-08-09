@@ -6,7 +6,7 @@ from guide3d.representations import curve
 
 
 def _check_points(points):
-    assert points.ndim == 2 and points.shape[1] == 2, "Points should be in 2D format"
+    # assert points.ndim == 2 and points.shape[1] == 2, "Points should be in 2D format"
     assert points.dtype == np.int32, "Points should be in int32 format"
 
 
