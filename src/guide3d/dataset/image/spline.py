@@ -155,8 +155,8 @@ class Guide3D(data.Dataset):
             img = self.image_transform(img)
 
         if self.with_mask:
-            mask = torch.ones(seq_len, dtype=torch.int32)
-            mask[self.max_length :] = 0
+            mask = torch.ones(self.max_length, dtype=torch.int32)
+            mask[seq_len:] = 0
             return img, t, c, seq_len, mask
         return img, t, c, seq_len, mask
 
@@ -202,9 +202,9 @@ def test_dataset():
 
     dataset_path = vars.dataset_path
     dataset = Guide3D(
-        dataset_path, "sphere_wo_reconstruct.json", with_mask=True, max_length=50
+        dataset_path, "sphere_wo_reconstruct.json", with_mask=True, max_length=30
     )
-    dataloader = data.DataLoader(dataset, batch_size=1, shuffle=True)
+    dataloader = data.DataLoader(dataset, batch_size=2, shuffle=True)
     i = 0
     for batch in dataloader:
         img, t, c, mask = dataset.decode_batch(batch, 0)
