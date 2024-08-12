@@ -99,9 +99,6 @@ class Guide3D(data.Dataset):
         image_transform: transforms.Compose = None,
         split: str = "train",
         split_ratio: tuple = (0.8, 0.1, 0.1),
-        with_mask: bool = False,
-        max_length: int = None,
-        pad: bool = False,
     ):
         self.root = Path(root)
         self.annotations_file = annotations_file
@@ -122,44 +119,43 @@ class Guide3D(data.Dataset):
             self.data = test_data
 
         self.image_transform = image_transform
-        self.with_mask = with_mask
-        if self.with_mask:
-            assert (
-                max_length is not None
-            ), "max_length should be provided when with_mask is True"
-        self.max_length = max_length
-        self.pad = pad
+        self.max_length = self._get_max_length()
 
     def __len__(self):
         return len(self.data)
 
+    def _get_max_length(self):
+        max_length = 0
+        for sample in self.data:
+            t, c, _ = sample["tck"]
+            max_length = max(max_length, len(t) - 4)
+        return max_length
+
     def __getitem__(self, idx):
         sample = self.data[idx]
         img = read_image(str(self.root / sample["image"]))
-        t, c, k = sample["tck"]
 
-        seq_len = len(t) - 4  # first 4 values are 0
-        seq_len = torch.tensor(seq_len, dtype=torch.int32)
+        t, c, _ = sample["tck"]
 
-        t = t[4:]  # first 4 values are 0
-        t = np.array(t, dtype=np.float32)
-        t = torch.tensor(t, dtype=torch.float32)
-        t = F.pad(t, (0, self.max_length - len(t)))
-
-        c = np.array(c, dtype=np.float32)
+        # t has 4 zeros at the beginning
+        t = torch.tensor(t[4:], dtype=torch.float32).unsqueeze(-1)
         c = torch.tensor(c, dtype=torch.float32)
-        c = c.T
-        c = F.pad(c, (0, 0, 0, self.max_length - len(c)))
+
+        seq_len = torch.tensor(len(t), dtype=torch.int32)
 
         if self.image_transform:
             img = self.image_transform(img)
 
-        if self.with_mask:
-            mask = torch.ones(self.max_length, dtype=torch.int32)
-            mask[seq_len:] = 0
-            return img, t, c, seq_len, mask
-        return img, t, c, seq_len, mask
+        target_seq = F.pad(
+            torch.cat([t, c], dim=-1), (0, 0, 0, self.max_length - seq_len)
+        )
 
+        target_mask = torch.ones(self.max_length, dtype=torch.int32)
+        target_mask[seq_len:] = 0
+
+        return img, target_seq, target_mask
+
+    # TODO: Fix the next two methods
     def decode_batch(self, batch, idx):
         img, t, c, seq_len, mask = batch
         img = img[idx].squeeze().numpy()
@@ -201,13 +197,12 @@ def test_dataset():
     import guide3d.vars as vars
 
     dataset_path = vars.dataset_path
-    dataset = Guide3D(
-        dataset_path, "sphere_wo_reconstruct.json", with_mask=True, max_length=30
-    )
+    dataset = Guide3D(dataset_path, "sphere_wo_reconstruct.json")
     dataloader = data.DataLoader(dataset, batch_size=2, shuffle=True)
     i = 0
     for batch in dataloader:
-        img, t, c, mask = dataset.decode_batch(batch, 0)
+        img, target_seq, target_mask = batch
+        exit()
         dataset.visualize_sample(batch, 0)
 
         if i % 10 == 0 and i != 0:
