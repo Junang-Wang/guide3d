@@ -45,7 +45,7 @@ def preprocess_tck(
     k = tck["k"]
 
     t = np.array(t)
-    c = [np.array(c_i) for c_i in c]
+    c = np.array([np.array(c_i) for c_i in c]).T
     k = int(k)
 
     return t, c, k
