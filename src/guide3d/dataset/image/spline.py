@@ -97,6 +97,9 @@ class Guide3D(data.Dataset):
         root: str,
         annotations_file: str = "sphere.json",
         image_transform: transforms.Compose = None,
+        c_transform: callable = None,
+        t_transform: callable = None,
+        add_init_token: bool = True,
         split: str = "train",
         split_ratio: tuple = (0.8, 0.1, 0.1),
     ):
@@ -119,7 +122,10 @@ class Guide3D(data.Dataset):
             self.data = test_data
 
         self.image_transform = image_transform
+        self.c_transform = c_transform
+        self.t_transform = t_transform
         self.max_length = self._get_max_length()
+        self.add_init_token = add_init_token
 
     def __len__(self):
         return len(self.data)
@@ -141,6 +147,19 @@ class Guide3D(data.Dataset):
         t = torch.tensor(t[4:], dtype=torch.float32).unsqueeze(-1)
         c = torch.tensor(c, dtype=torch.float32)
 
+        init_t = torch.tensor([0], dtype=torch.float32).unsqueeze(-1)
+        init_c = torch.zeros_like(c[0]).unsqueeze(0)
+
+        if self.add_init_token:
+            t = torch.cat([init_t, t], dim=0)
+            c = torch.cat([init_c, c], dim=0)
+
+        if self.t_transform:
+            t = self.t_transform(t)
+
+        if self.c_transform:
+            c = self.c_transform(c)
+
         seq_len = torch.tensor(len(t), dtype=torch.int32)
 
         if self.image_transform:
@@ -155,43 +174,6 @@ class Guide3D(data.Dataset):
 
         return img, target_seq, target_mask
 
-    # TODO: Fix the next two methods
-    def decode_batch(self, batch, idx):
-        img, t, c, seq_len, mask = batch
-        img = img[idx].squeeze().numpy()
-        seq_len = seq_len[idx].numpy()
-        t = t[idx].numpy()[:seq_len]
-        c = c[idx].numpy()[:seq_len]
-        c = c.T
-
-        mask = mask[idx].numpy()
-        t = np.concatenate((np.zeros(4), t))
-
-        return img, t, c, mask
-
-    def visualize_sample(self, batch, idx, n_points=30):
-        import cv2
-        import matplotlib.pyplot as plt
-        from guide3d.utils import viz
-        from scipy.interpolate import splev
-
-        img, t, c, mask = self.decode_batch(batch, idx)
-        img = viz.convert_to_color(img)
-
-        # draw control points
-        for control_point in c.astype(np.int32).T:
-            img = cv2.circle(img, tuple(control_point), 4, (255, 0, 0), -1)
-
-        # draw spline
-        sample_points = np.linspace(0, t[-1], n_points)
-        spline_points = splev(sample_points, (t, c, self.k))
-        for point in np.array(spline_points).astype(np.int32).T:
-            img = cv2.circle(img, tuple(point), 2, (0, 255, 0), -1)
-
-        plt.imshow(img, cmap="gray")
-        plt.axis("off")
-        plt.show()
-
 
 def test_dataset():
     import guide3d.vars as vars
@@ -199,15 +181,17 @@ def test_dataset():
     dataset_path = vars.dataset_path
     dataset = Guide3D(dataset_path, "sphere_wo_reconstruct.json")
     dataloader = data.DataLoader(dataset, batch_size=2, shuffle=True)
+    batch = next(iter(dataloader))
     i = 0
     for batch in dataloader:
         img, target_seq, target_mask = batch
-        exit()
-        dataset.visualize_sample(batch, 0)
+        seq_len = target_mask.sum(dim=-1)
+        print(img.shape, target_seq.shape, target_mask.shape)
+        # dataset.visualize_sample(batch, 0)
 
-        if i % 10 == 0 and i != 0:
-            exit()
-        i += 1
+        # if i % 10 == 0 and i != 0:
+        # exit()
+        # i += 1
 
 
 if __name__ == "__main__":
