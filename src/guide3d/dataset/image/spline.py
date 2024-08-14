@@ -99,7 +99,7 @@ class Guide3D(data.Dataset):
         image_transform: transforms.Compose = None,
         c_transform: callable = None,
         t_transform: callable = None,
-        add_init_token: bool = True,
+        add_init_token: bool = False,
         split: str = "train",
         split_ratio: tuple = (0.8, 0.1, 0.1),
     ):
@@ -124,8 +124,8 @@ class Guide3D(data.Dataset):
         self.image_transform = image_transform
         self.c_transform = c_transform
         self.t_transform = t_transform
-        self.max_length = self._get_max_length()
         self.add_init_token = add_init_token
+        self.max_length = self._get_max_length()
 
     def __len__(self):
         return len(self.data)
@@ -135,6 +135,7 @@ class Guide3D(data.Dataset):
         for sample in self.data:
             t, c, _ = sample["tck"]
             max_length = max(max_length, len(t) - 4)
+
         if self.add_init_token:
             max_length += 1
         return max_length
