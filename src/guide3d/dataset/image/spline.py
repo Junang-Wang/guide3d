@@ -20,6 +20,44 @@ image_transforms = transforms.Compose(
     ]
 )
 
+IMAGE_SIZE = 1024
+N_CHANNELS = 1
+MODEL_VERSION = "1"
+
+vit_transform = transforms.Compose(
+    [
+        transforms.ToPILImage(),  # Convert image to PIL image
+        # transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),  # Resize image to 224x224
+        transforms.ToTensor(),
+        transforms.Lambda(lambda x: x.repeat(N_CHANNELS, 1, 1)),
+        transforms.Normalize(  # Normalize with mean and std
+            mean=[0.5 for _ in range(N_CHANNELS)],
+            std=[0.5 for _ in range(N_CHANNELS)],
+        ),
+    ]
+)
+
+
+def c_transform(c):
+    return c / IMAGE_SIZE
+
+
+def t_transform(t):
+    return t / 2000
+
+
+def c_untransform(c):
+    return c * IMAGE_SIZE
+
+
+def t_untransform(t):
+    return t * 2000
+
+
+def unnorm(img):
+    img = img * 0.5 + 0.5
+    return img
+
 
 def process_data(
     data: Dict,
@@ -130,6 +168,28 @@ class Guide3D(data.Dataset):
     def __len__(self):
         return len(self.data)
 
+    @property
+    def t(self):
+        t_min = 0
+        t_max = 0
+        for sample in self.data:
+            t, c, _ = sample["tck"]
+            t_min = min(t_min, t.min())
+            t_max = max(t_max, t.max())
+
+        return t_min, t_max
+
+    @property
+    def c(self):
+        c_min = 0
+        c_max = 0
+        for sample in self.data:
+            t, c, _ = sample["tck"]
+            c_min = min(c_min, c.min())
+            c_max = max(c_max, c.max())
+
+        return c_min, c_max
+
     def _get_max_length(self):
         max_length = 0
         for sample in self.data:
@@ -182,19 +242,28 @@ def test_dataset():
     import guide3d.vars as vars
 
     dataset_path = vars.dataset_path
-    dataset = Guide3D(dataset_path, "sphere_wo_reconstruct.json")
-    dataloader = data.DataLoader(dataset, batch_size=2, shuffle=True)
+    dataset = Guide3D(
+        dataset_path,
+        "sphere_wo_reconstruct.json",
+        image_transform=vit_transform,
+        c_transform=c_transform,
+        t_transform=t_transform,
+    )
+    print(dataset.t)
+    print(dataset.c)
+    exit()
+    dataloader = data.DataLoader(dataset, batch_size=2, shuffle=False)
     batch = next(iter(dataloader))
-    i = 0
     for batch in dataloader:
         img, target_seq, target_mask = batch
+        ts = target_seq[:, :, 0]
+        cs = target_seq[:, :, 1:]
+        print("Ts shape", ts.shape)
+        print("Cs shape", cs.shape)
+        print("T", ts.min(), ts.max())
+        print("C", cs.min(), cs.max())
         seq_len = target_mask.sum(dim=-1)
         print(img.shape, target_seq.shape, target_mask.shape)
-        # dataset.visualize_sample(batch, 0)
-
-        # if i % 10 == 0 and i != 0:
-        # exit()
-        # i += 1
 
 
 if __name__ == "__main__":
