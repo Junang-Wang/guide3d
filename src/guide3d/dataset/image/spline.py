@@ -137,6 +137,8 @@ class Guide3D(data.Dataset):
         image_transform: transforms.Compose = None,
         c_transform: callable = None,
         t_transform: callable = None,
+        c_untransform: callable = None,
+        t_untransform: callable = None,
         add_init_token: bool = False,
         batch_first: bool = False,
         split: str = "train",
@@ -163,6 +165,9 @@ class Guide3D(data.Dataset):
         self.image_transform = image_transform
         self.c_transform = c_transform
         self.t_transform = t_transform
+        self.c_untransform = c_untransform
+        self.t_untransform = t_untransform
+
         self.add_init_token = add_init_token
         self.max_length = self._get_max_length()
 
