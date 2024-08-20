@@ -138,6 +138,7 @@ class Guide3D(data.Dataset):
         c_transform: callable = None,
         t_transform: callable = None,
         add_init_token: bool = False,
+        batch_first: bool = False,
         split: str = "train",
         split_ratio: tuple = (0.8, 0.1, 0.1),
     ):
@@ -165,11 +166,13 @@ class Guide3D(data.Dataset):
         self.add_init_token = add_init_token
         self.max_length = self._get_max_length()
 
+        self.t_min, self.t_max = self._get_ts()
+        self.c_min, self.c_max = self._get_cs()
+
     def __len__(self):
         return len(self.data)
 
-    @property
-    def t(self):
+    def _get_ts(self):
         t_min = 0
         t_max = 0
         for sample in self.data:
@@ -179,8 +182,7 @@ class Guide3D(data.Dataset):
 
         return t_min, t_max
 
-    @property
-    def c(self):
+    def _get_cs(self):
         c_min = 0
         c_max = 0
         for sample in self.data:
@@ -218,10 +220,10 @@ class Guide3D(data.Dataset):
             c = torch.cat([init_c, c], dim=0)
 
         if self.t_transform:
-            t = self.t_transform(t)
+            t = self.t_transform(t, self.t_min, self.t_max)
 
         if self.c_transform:
-            c = self.c_transform(c)
+            c = self.c_transform(c, self.c_min, self.c_max)
 
         seq_len = torch.tensor(len(t), dtype=torch.int32)
 
@@ -246,12 +248,10 @@ def test_dataset():
         dataset_path,
         "sphere_wo_reconstruct.json",
         image_transform=vit_transform,
-        c_transform=c_transform,
-        t_transform=t_transform,
+        # c_transform=c_transform,
+        # t_transform=t_transform,
     )
-    print(dataset.t)
-    print(dataset.c)
-    exit()
+    # exit()
     dataloader = data.DataLoader(dataset, batch_size=2, shuffle=False)
     batch = next(iter(dataloader))
     for batch in dataloader:
@@ -261,9 +261,10 @@ def test_dataset():
         print("Ts shape", ts.shape)
         print("Cs shape", cs.shape)
         print("T", ts.min(), ts.max())
-        print("C", cs.min(), cs.max())
+        print("Sequence_length", target_mask.sum(-1)[0])
+        # print("C", cs.min(), cs.max())
         seq_len = target_mask.sum(dim=-1)
-        print(img.shape, target_seq.shape, target_mask.shape)
+        # print(img.shape, target_seq.shape, target_mask.shape)
 
 
 if __name__ == "__main__":
