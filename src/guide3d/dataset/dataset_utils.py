@@ -9,7 +9,7 @@ import numpy as np
 from torch.utils import data
 
 
-class Guide3D(data.Dataset):
+class BaseGuide3D(data.Dataset):
     """
     A custom PyTorch Dataset class for loading and processing Guide3D annotation data.
 
@@ -140,7 +140,7 @@ def flatten(
 
 
 if __name__ == "__main__":
-    dataset = Guide3D(
+    dataset = BaseGuide3D(
         dataset_path="~/test",
         annotations_file="sphere.json",
         split_fn=lambda x, y: (x, x, x),

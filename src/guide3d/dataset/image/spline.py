@@ -3,7 +3,7 @@ from typing import Dict, List
 import numpy as np
 import torch
 import torch.nn.functional as F
-from guide3d.dataset.dataset_utils import Guide3D as Dataset
+from guide3d.dataset.dataset_utils import BaseGuide3D as Dataset
 from guide3d.utils.utils import preprocess_tck
 from torch.utils import data
 from torchvision import transforms
@@ -131,7 +131,7 @@ class Guide3D(Dataset):
 
     def __init__(
         self,
-        root: str,
+        dataset_path: str,
         annotations_file: str = "sphere.json",
         image_transform: transforms.Compose = None,
         c_transform: callable = None,
@@ -145,7 +145,7 @@ class Guide3D(Dataset):
         download: bool = False,
     ):
         super(Guide3D, self).__init__(
-            dataset_path=root,
+            dataset_path=dataset_path,
             annotations_file=annotations_file,
             process_data=process_data,
             split_fn=split_fn,
