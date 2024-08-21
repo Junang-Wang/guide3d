@@ -3,7 +3,7 @@ from typing import Dict, List
 import numpy as np
 import torch
 import torch.nn.functional as F
-from guide3d.dataset.dataset_utils import BaseGuide3D as Dataset
+from guide3d.dataset.dataset_utils import BaseGuide3D
 from guide3d.utils.utils import preprocess_tck
 from torch.utils import data
 from torchvision import transforms
@@ -112,7 +112,7 @@ def split_fn(
     return train_data, val_data, test_data
 
 
-class Guide3D(Dataset):
+class Guide3D(BaseGuide3D):
     """Guide3D dataset
 
     The dataset contains images and their corresponding t, c, u values,
