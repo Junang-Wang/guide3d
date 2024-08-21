@@ -1,11 +1,9 @@
-import json
-from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from guide3d.dataset.dataset_utils import annotations_dir
+from guide3d.dataset.dataset_utils import Guide3D as Dataset
 from guide3d.utils.utils import preprocess_tck
 from torch.utils import data
 from torchvision import transforms
@@ -97,7 +95,7 @@ def process_data(
     return video_pairs
 
 
-def split_video_data(
+def split_fn(
     data: List,
     split: tuple = (0.8, 0.1, 0.1),
 ) -> List:
@@ -114,7 +112,7 @@ def split_video_data(
     return train_data, val_data, test_data
 
 
-class Guide3D(data.Dataset):
+class Guide3D(Dataset):
     """Guide3D dataset
 
     The dataset contains images and their corresponding t, c, u values,
@@ -144,27 +142,17 @@ class Guide3D(data.Dataset):
         batch_first: bool = False,
         split: str = "train",
         split_ratio: tuple = (0.8, 0.1, 0.1),
+        download: bool = False,
     ):
-        self.root = Path(root)
-        if isinstance(annotations_file, str):
-            self.annotations_file = annotations_dir / annotations_file
-        else:
-            self.annotations_file = annotations_file
-        raw_data = json.load(open(self.annotations_file))
-        data = process_data(raw_data)
-        train_data, val_data, test_data = split_video_data(data, split_ratio)
-        assert split in [
-            "train",
-            "val",
-            "test",
-        ], "Split should be one of 'train', 'val', 'test'"
-
-        if split == "train":
-            self.data = train_data
-        elif split == "val":
-            self.data = val_data
-        elif split == "test":
-            self.data = test_data
+        super(Guide3D, self).__init__(
+            dataset_path=root,
+            annotations_file=annotations_file,
+            process_data=process_data,
+            split_fn=split_fn,
+            download=download,
+            split=split,
+            split_ratio=split_ratio,
+        )
 
         self.image_transform = image_transform
         self.c_transform = c_transform
@@ -213,7 +201,7 @@ class Guide3D(data.Dataset):
 
     def __getitem__(self, idx):
         sample = self.data[idx]
-        img = read_image(str(self.root / sample["image"]))
+        img = read_image(str(self.dataset_path / sample["image"]))
 
         t, c, _ = sample["tck"]
 
@@ -239,9 +227,7 @@ class Guide3D(data.Dataset):
         if self.image_transform:
             img = self.image_transform(img)
 
-        target_seq = F.pad(
-            torch.cat([t, c], dim=-1), (0, 0, 0, self.max_length - seq_len)
-        )
+        target_seq = F.pad(torch.cat([t, c], dim=-1), (0, 0, 0, self.max_length - seq_len))
 
         target_mask = torch.ones(self.max_length, dtype=torch.int32)
         target_mask[seq_len:] = 0
