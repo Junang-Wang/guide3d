@@ -86,8 +86,8 @@ class BaseGuide3D(data.Dataset):
             assert self.annotations_file.exists(), f"Annotations file not found: {self.annotations_file}"
 
         self.raw_data = json.load(open(self.annotations_file))
-        data = process_data(self.raw_data)
-        train_data, val_data, test_data = split_fn(data, split_ratio)
+        self.all_data = process_data(self.raw_data)
+        train_data, val_data, test_data = split_fn(self.all_data, split_ratio)
 
         if split == "train":
             self.data = train_data
