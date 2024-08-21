@@ -13,9 +13,7 @@ def parse(annotation_file: str) -> List:
     return json_file
 
 
-def get_data(
-    annotation_file: str = "data/annotations/raw.json", frames: List = [70, 100, 150]
-) -> List:
+def get_data(annotation_file: str = "data/annotations/raw.json", frames: List = [70, 100, 150]) -> List:
     import json
 
     dummy_data = []
@@ -50,6 +48,7 @@ def preprocess_tck(
 
     t = np.array(t)
     c = np.array([np.array(c_i) for c_i in c]).T
+    c = np.clip(c, 0, 1024)
     k = int(k)
 
     return t, c, k

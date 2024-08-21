@@ -130,6 +130,11 @@ class Guide3D(BaseGuide3D):
 
     k = 3
 
+    c_min = 0
+    c_max = 1024
+    t_min = 0
+    t_max = 1274
+
     def __init__(
         self,
         dataset_path: Union[str, Path],
@@ -137,8 +142,6 @@ class Guide3D(BaseGuide3D):
         image_transform: transforms.Compose = None,
         c_transform: callable = None,
         t_transform: callable = None,
-        c_untransform: callable = None,
-        t_untransform: callable = None,
         add_init_token: bool = False,
         batch_first: bool = False,
         split: str = "train",
@@ -158,14 +161,9 @@ class Guide3D(BaseGuide3D):
         self.image_transform = image_transform
         self.c_transform = c_transform
         self.t_transform = t_transform
-        self.c_untransform = c_untransform
-        self.t_untransform = t_untransform
 
         self.add_init_token = add_init_token
         self.max_length = self._get_max_length()
-
-        self.t_min, self.t_max = self._get_ts()
-        self.c_min, self.c_max = self._get_cs()
 
     def __len__(self):
         return len(self.data)
@@ -173,28 +171,31 @@ class Guide3D(BaseGuide3D):
     def _get_ts(self):
         t_min = 0
         t_max = 0
-        for sample in self.all_data:
-            t, c, _ = sample["tck"]
-            t_min = min(t_min, t.min())
-            t_max = max(t_max, t.max())
+        for video in self.all_data:
+            for sample in video:
+                t, c, _ = sample["tck"]
+                t_min = min(t_min, t.min())
+                t_max = max(t_max, t.max())
 
         return t_min, t_max
 
     def _get_cs(self):
         c_min = 0
         c_max = 0
-        for sample in self.all_data:
-            t, c, _ = sample["tck"]
-            c_min = min(c_min, c.min())
-            c_max = max(c_max, c.max())
+        for video in self.all_data:
+            for sample in video:
+                t, c, _ = sample["tck"]
+                c_min = min(c_min, c.min())
+                c_max = max(c_max, c.max())
 
         return c_min, c_max
 
     def _get_max_length(self):
         max_length = 0
-        for sample in self.all_data:
-            t, c, _ = sample["tck"]
-            max_length = max(max_length, len(t) - 4)
+        for video in self.all_data:
+            for sample in video:
+                t, c, _ = sample["tck"]
+                max_length = max(max_length, len(t) - 4)
 
         if self.add_init_token:
             max_length += 1
@@ -218,10 +219,10 @@ class Guide3D(BaseGuide3D):
             c = torch.cat([init_c, c], dim=0)
 
         if self.t_transform:
-            t = self.t_transform(t, self.t_min, self.t_max)
+            t = self.t_transform(t)
 
         if self.c_transform:
-            c = self.c_transform(c, self.c_min, self.c_max)
+            c = self.c_transform(c)
 
         seq_len = torch.tensor(len(t), dtype=torch.int32)
 
@@ -244,8 +245,6 @@ def test_dataset():
         dataset_path,
         "sphere_wo_reconstruct.json",
         image_transform=vit_transform,
-        # c_transform=c_transform,
-        # t_transform=t_transform,
     )
     dataloader = data.DataLoader(dataset, batch_size=2, shuffle=False)
     batch = next(iter(dataloader))
