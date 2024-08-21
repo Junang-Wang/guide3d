@@ -1,6 +1,5 @@
-import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Union
 
 import numpy as np
 import torch
@@ -79,7 +78,7 @@ def process_data(
     return new_videos
 
 
-def split_video_data(
+def split_fn(
     data: List,
     split: tuple = (0.8, 0.1, 0.1),
 ) -> List:
@@ -99,32 +98,25 @@ def split_video_data(
 class Guide3D(data.Dataset):
     def __init__(
         self,
-        root: str,
-        annotations_file: str = "sphere.json",
+        dataset_path: Union[str, Path],
+        annotations_file: Union[str, Path] = "sphere.json",
         image_transform: transforms.Compose = None,
         pts_transform: callable = None,
         seg_len: int = 3,
         max_len: int = 150,
         split: str = "train",
         split_ratio: tuple = (0.8, 0.1, 0.1),
+        download: bool = False,
     ):
-        self.root = Path(root)
-        self.annotations_file = annotations_file
-        raw_data = json.load(open(self.root / self.annotations_file))
-        data = process_data(raw_data)
-        train_data, val_data, test_data = split_video_data(data, split_ratio)
-        assert split in [
-            "train",
-            "val",
-            "test",
-        ], "Split should be one of 'train', 'val', 'test'"
-
-        if split == "train":
-            self.data = train_data
-        elif split == "val":
-            self.data = val_data
-        elif split == "test":
-            self.data = test_data
+        super(Guide3D, self).__init__(
+            dataset_path=dataset_path,
+            annotations_file=annotations_file,
+            process_data=process_data,
+            split_fn=split_fn,
+            download=download,
+            split=split,
+            split_ratio=split_ratio,
+        )
 
         self.image_transform = image_transform
         self.pts_transform = pts_transform

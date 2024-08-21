@@ -1,4 +1,5 @@
-from typing import Dict, List
+from pathlib import Path
+from typing import Dict, List, Union
 
 import cv2
 import numpy as np
@@ -87,8 +88,8 @@ def split_fn(
 class Guide3D(BaseGuide3D):
     def __init__(
         self,
-        dataset_path: str,
-        annotations_file: str = "sphere.json",
+        dataset_path: Union[str, Path],
+        annotations_file: Union[str, Path] = "sphere.json",
         image_transform: transforms.Compose = None,
         mask_transform: callable = None,
         split: str = "train",
