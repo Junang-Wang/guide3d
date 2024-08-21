@@ -173,7 +173,7 @@ class Guide3D(BaseGuide3D):
     def _get_ts(self):
         t_min = 0
         t_max = 0
-        for sample in self.data:
+        for sample in self.all_data:
             t, c, _ = sample["tck"]
             t_min = min(t_min, t.min())
             t_max = max(t_max, t.max())
@@ -183,7 +183,7 @@ class Guide3D(BaseGuide3D):
     def _get_cs(self):
         c_min = 0
         c_max = 0
-        for sample in self.data:
+        for sample in self.all_data:
             t, c, _ = sample["tck"]
             c_min = min(c_min, c.min())
             c_max = max(c_max, c.max())
@@ -192,7 +192,7 @@ class Guide3D(BaseGuide3D):
 
     def _get_max_length(self):
         max_length = 0
-        for sample in self.data:
+        for sample in self.all_data:
             t, c, _ = sample["tck"]
             max_length = max(max_length, len(t) - 4)
 
