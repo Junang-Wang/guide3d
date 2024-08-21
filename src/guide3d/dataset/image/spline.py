@@ -134,6 +134,7 @@ class Guide3D(BaseGuide3D):
     c_max = 1024
     t_min = 0
     t_max = 1274
+    max_seq_len = 19
 
     def __init__(
         self,
