@@ -1,0 +1,2 @@
+graft src/guide3d
+recursive-include src/guide3d/dataset/annotations *

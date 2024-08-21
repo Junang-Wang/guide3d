@@ -31,7 +31,11 @@ dependencies = [
     "plotly",
     "transformers",
     "colour",
+    "gdown"
 ]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 120

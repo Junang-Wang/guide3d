@@ -1,6 +1,10 @@
 import json
+import os
+import zipfile
+from pathlib import Path
 from typing import Dict, List
 
+import gdown
 import numpy as np
 
 
@@ -51,10 +55,26 @@ def preprocess_tck(
     return t, c, k
 
 
+def download_data(path: Path):
+    id = "1eCRDajlUd3fVWdNcRJjskpu_H3onx039"
+
+    if not path.exists():
+        path.mkdir()
+
+    zip_path = path / "temp.zip"
+
+    print("Downloading file with gdrive...")
+    gdown.download(id=id, output=zip_path.as_posix(), quiet=False)
+
+    print("Extracting contents...")
+    with zipfile.ZipFile(zip_path, "r") as zip_ref:
+        zip_ref.extractall(path)
+
+    print(f"Extracted contents to {path}")
+
+    os.remove(zip_path)
+
+
 if __name__ == "__main__":
-    import vars
-
-    data_path = vars.dataset_path
-
-    parsed_data = parse(data_path / "annotations.xml")
-    print(len(parsed_data))
+    root = Path.home() / "test"
+    download_data(root)

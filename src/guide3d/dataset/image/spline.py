@@ -5,6 +5,7 @@ from typing import Dict, List
 import numpy as np
 import torch
 import torch.nn.functional as F
+from guide3d.dataset.dataset_utils import annotations_dir
 from guide3d.utils.utils import preprocess_tck
 from torch.utils import data
 from torchvision import transforms
@@ -145,8 +146,11 @@ class Guide3D(data.Dataset):
         split_ratio: tuple = (0.8, 0.1, 0.1),
     ):
         self.root = Path(root)
-        self.annotations_file = annotations_file
-        raw_data = json.load(open(self.root / self.annotations_file))
+        if isinstance(annotations_file, str):
+            self.annotations_file = annotations_dir / annotations_file
+        else:
+            self.annotations_file = annotations_file
+        raw_data = json.load(open(self.annotations_file))
         data = process_data(raw_data)
         train_data, val_data, test_data = split_video_data(data, split_ratio)
         assert split in [
@@ -256,7 +260,6 @@ def test_dataset():
         # c_transform=c_transform,
         # t_transform=t_transform,
     )
-    # exit()
     dataloader = data.DataLoader(dataset, batch_size=2, shuffle=False)
     batch = next(iter(dataloader))
     for batch in dataloader:
