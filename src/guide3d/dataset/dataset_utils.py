@@ -67,7 +67,8 @@ class BaseGuide3D(data.Dataset):
         if isinstance(dataset_path, str):
             self.dataset_path = Path(dataset_path).expanduser().resolve()
 
-        self.dataset_path = dataset_path
+        else:
+            self.dataset_path = dataset_path
 
         if not self.dataset_path.exists():
             if download:
