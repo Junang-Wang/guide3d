@@ -174,9 +174,6 @@ class Guide3D(BaseGuide3D):
             for sample in video:
                 t, c, _ = sample["tck"]
                 max_length = max(max_length, len(t) - 4)
-
-        if self.add_init_token:
-            max_length += 1
         return max_length
 
     def __getitem__(self, idx):
