@@ -143,7 +143,7 @@ class Guide3D(BaseGuide3D):
         image_transform: transforms.Compose = None,
         c_transform: callable = None,
         t_transform: callable = None,
-        add_init_token: bool = False,
+        transform_both: callable = None,
         batch_first: bool = False,
         split: str = "train",
         split_ratio: tuple = (0.8, 0.1, 0.1),
@@ -162,34 +162,11 @@ class Guide3D(BaseGuide3D):
         self.image_transform = image_transform
         self.c_transform = c_transform
         self.t_transform = t_transform
-
-        self.add_init_token = add_init_token
+        self.transform_both = transform_both
         self.max_length = self._get_max_length()
 
     def __len__(self):
         return len(self.data)
-
-    def _get_ts(self):
-        t_min = 0
-        t_max = 0
-        for video in self.all_data:
-            for sample in video:
-                t, c, _ = sample["tck"]
-                t_min = min(t_min, t.min())
-                t_max = max(t_max, t.max())
-
-        return t_min, t_max
-
-    def _get_cs(self):
-        c_min = 0
-        c_max = 0
-        for video in self.all_data:
-            for sample in video:
-                t, c, _ = sample["tck"]
-                c_min = min(c_min, c.min())
-                c_max = max(c_max, c.max())
-
-        return c_min, c_max
 
     def _get_max_length(self):
         max_length = 0
@@ -212,12 +189,8 @@ class Guide3D(BaseGuide3D):
         t = torch.tensor(t[4:], dtype=torch.float32).unsqueeze(-1)
         c = torch.tensor(c, dtype=torch.float32)
 
-        init_t = torch.tensor([0], dtype=torch.float32).unsqueeze(-1)
-        init_c = torch.zeros_like(c[0]).unsqueeze(0)
-
-        if self.add_init_token:
-            t = torch.cat([init_t, t], dim=0)
-            c = torch.cat([init_c, c], dim=0)
+        if self.transform_both:
+            img, t, c = self.transform_both(img, t, c)
 
         if self.t_transform:
             t = self.t_transform(t)
@@ -236,6 +209,33 @@ class Guide3D(BaseGuide3D):
         target_mask[seq_len:] = 0
 
         return img, target_seq, target_mask
+
+
+def quick_show(img, ts, cs, seq_len, index):
+    import cv2
+    import matplotlib.pyplot as plt
+    from scipy.interpolate import splev
+
+    img = img[index].squeeze(0).detach().cpu().numpy()
+    seq_len = seq_len[index].detach().cpu().numpy().astype(int)
+    ts = ts[index, :seq_len].detach().cpu().numpy()
+    cs = cs[index, :seq_len].detach().cpu().numpy()
+
+    img = cv2.resize(img, (256, 256))
+    scale_factor = 256 / 1024
+
+    ts = ts * scale_factor
+    cs = cs * scale_factor
+
+    ts = np.concatenate([np.zeros((4)), ts], axis=0)
+    samples = np.linspace(0, ts[-1], 50)
+    sampled_c = splev(samples, (ts, cs.T, 3))
+    sampled_c = np.array(sampled_c).T
+
+    plt.scatter(cs[:, 0], cs[:, 1], s=5)
+    plt.plot(sampled_c[:, 0], sampled_c[:, 1], c="r")
+    plt.imshow(img, cmap="gray")
+    plt.show()
 
 
 def test_dataset():
@@ -258,7 +258,9 @@ def test_dataset():
         print("T", ts.min(), ts.max())
         print("Sequence_length", target_mask.sum(-1)[0])
         # print("C", cs.min(), cs.max())
-        seq_len = target_mask.sum(dim=-1)
+        seq_len = target_mask.sum(dim=1)
+        quick_show(img, ts, cs, seq_len, index=0)
+        exit()
         # print(img.shape, target_seq.shape, target_mask.shape)
 
 
