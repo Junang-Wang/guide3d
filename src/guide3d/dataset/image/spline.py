@@ -10,24 +10,14 @@ from torch.utils import data
 from torchvision import transforms
 from torchvision.io import read_image
 
-image_transforms = transforms.Compose(
-    [
-        transforms.ToTensor(),
-        transforms.Lambda(lambda x: x / 255.0),
-        transforms.Normalize((0.5,), (0.5,)),
-        # gray to RGB
-        transforms.Lambda(lambda x: x.repeat(3, 1, 1)),
-    ]
-)
-
 IMAGE_SIZE = 1024
 N_CHANNELS = 1
 MODEL_VERSION = "1"
 
-vit_transform = transforms.Compose(
+image_transform = transforms.Compose(
     [
         transforms.ToPILImage(),  # Convert image to PIL image
-        # transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),  # Resize image to 224x224
+        transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),  # Resize image to 224x224
         transforms.ToTensor(),
         transforms.Lambda(lambda x: x.repeat(N_CHANNELS, 1, 1)),
         transforms.Normalize(  # Normalize with mean and std
@@ -195,11 +185,10 @@ class Guide3D(BaseGuide3D):
         if self.c_transform:
             c = self.c_transform(c)
 
-        seq_len = torch.tensor(len(t), dtype=torch.int32)
-
         if self.image_transform:
             img = self.image_transform(img)
 
+        seq_len = torch.tensor(len(t), dtype=torch.int32)
         target_seq = F.pad(torch.cat([t, c], dim=-1), (0, 0, 0, self.max_length - seq_len))
 
         target_mask = torch.ones(self.max_length, dtype=torch.int32)
@@ -242,7 +231,7 @@ def test_dataset():
     dataset = Guide3D(
         dataset_path,
         "sphere_wo_reconstruct.json",
-        image_transform=vit_transform,
+        image_transform=image_transform,
     )
     dataloader = data.DataLoader(dataset, batch_size=2, shuffle=False)
     batch = next(iter(dataloader))
