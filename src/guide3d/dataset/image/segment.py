@@ -28,8 +28,9 @@ def make_mask(tck, u, delta=0.1):
     mask = np.zeros((1024, 1024), dtype=np.uint8)
     pts = np.array(pts, dtype=np.int32)
     pts = pts.reshape((-1, 1, 2))
-    cv2.polylines(mask, [pts], isClosed=False, color=(255, 0, 255), thickness=2)
-    mask = mask // 255
+    cv2.polylines(mask, [pts], isClosed=False, color=255, thickness=2)
+    mask = mask / 255
+    mask = mask.astype(np.uint8)
     return mask
 
 
