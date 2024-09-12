@@ -6,6 +6,7 @@ import guide3d.vars as vars
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import torch.nn.functional as F
 from guide3d.dataset.dataset_utils import BaseGuide3D
 from guide3d.representations import curve
 from torch.utils import data
@@ -120,12 +121,12 @@ class Guide3D(BaseGuide3D):
     c_max = 1024
     t_min = 0
     t_max = 1274
-    max_seq_len = 8
+    max_seq_len = 30
 
     def __init__(
         self,
         dataset_path: Union[str, Path],
-        annotations_file: Union[str, Path] = "sphere_wo_reconstruct_bezier.json",
+        annotations_file: Union[str, Path] = "points.json",
         image_transform: transforms.Compose = None,
         c_transform: callable = None,
         t_transform: callable = None,
@@ -176,8 +177,8 @@ class Guide3D(BaseGuide3D):
         if self.image_transform:
             img = self.image_transform(img)
 
-        seq_len = torch.tensor(len(c), dtype=torch.int32)
-        target_seq = c
+        seq_len = len(c)
+        target_seq = F.pad(c, (0, 0, 0, self.max_length - seq_len))
 
         target_mask = torch.ones(self.max_length, dtype=torch.int32)
         target_mask[seq_len:] = 0
@@ -255,7 +256,9 @@ def test_dataset():
         print(target_seq.shape)
         print(target_mask.shape)
         print(target_mask)
-        visualize_bezier(target_seq[0].cpu().numpy(), img[0][0].cpu().numpy())
+        plt.imshow(img[0][0], cmap="gray")
+        plt.plot(target_seq[0, :, 0], target_seq[0, :, 1], "ro")
+        plt.show()
         continue
         print("Ts shape", ts.shape)
         print("Cs shape", cs.shape)
