@@ -134,7 +134,7 @@ class Guide3D(BaseGuide3D):
     c_max = 1024
     t_min = 0
     t_max = 1274
-    max_seq_len = 19
+    max_seq_len = 8
 
     def __init__(
         self,
@@ -263,9 +263,12 @@ def test_dataset():
     )
     dataloader = data.DataLoader(dataset, batch_size=2, shuffle=False)
     batch = next(iter(dataloader))
+    print(dataset._get_max_length())
     for batch in dataloader:
         img, target_seq, target_mask = batch
-        print(target_seq)
+        print(target_seq.shape)
+        print(target_mask.shape)
+        print(target_mask)
         visualize_bezier(target_seq[0].cpu().numpy(), img[0][0].cpu().numpy())
         continue
         print("Ts shape", ts.shape)
