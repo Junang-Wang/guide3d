@@ -124,18 +124,18 @@ def fit_piecewise_bezier(points, segment_count):
     return np.vstack(piecewise_bezier_curves), all_control_points
 
 
-def sample_spline(tck: tuple, u: list, n: int = None, delta: float = None):
+def sample_spline(tck: tuple, u: list = None, n: int = None, delta: float = None):
     assert delta or n, "Either delta or n must be provided"
     assert not (delta and n), "Only one of delta or n must be provided"
 
     def is2d(tck):
         return len(tck[1]) == 2
 
-    u_max = u[-1]
+    u_max = u[-1] if u is not None else tck[0][-1]
     num_samples = int(u_max / delta) + 1 if delta else n
     u = np.linspace(0, u_max, num_samples)
     if is2d(tck):
-        x, y = splev(u, tck, ext=2)
+        x, y = splev(u, tck, ext=3)
         return np.column_stack([x, y]).astype(np.int32)
     else:
         x, y, z = splev(u, tck)
