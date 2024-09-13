@@ -1,14 +1,12 @@
 from pathlib import Path
 from typing import Dict, List, Union
 
-import cv2
-import guide3d.vars as vars
-import matplotlib.pyplot as plt
+import guide3d.representations.curve as curve
 import numpy as np
 import torch
 import torch.nn.functional as F
 from guide3d.dataset.dataset_utils import BaseGuide3D
-from guide3d.representations import curve
+from guide3d.utils.utils import preprocess_tck
 from torch.utils import data
 from torchvision import transforms
 from torchvision.io import read_image
@@ -52,12 +50,12 @@ def unnorm(img):
     return img
 
 
-def preprocess_tck(
-    tck: Dict,
-) -> List:
-    c = tck["c"]
-    c = np.array(c)
-    return c
+def filter_pts(pts):
+    filtered = []
+    for pt in pts:
+        if 0 <= pt[0] < 1024 and 0 <= pt[1] < 1024:
+            filtered.append(pt)
+    return np.array(filtered)
 
 
 def process_data(
@@ -74,23 +72,8 @@ def process_data(
             tckA = preprocess_tck(frame["cameraA"]["tck"])
             tckB = preprocess_tck(frame["cameraB"]["tck"])
 
-            uA = np.array(frame["cameraA"]["u"]).astype(np.float32)
-            uB = np.array(frame["cameraB"]["u"]).astype(np.float32)
-
-            videoA.append(
-                dict(
-                    image=imageA,
-                    tck=tckA,
-                    u=uA,
-                )
-            )
-            videoB.append(
-                dict(
-                    image=imageB,
-                    tck=tckB,
-                    u=uB,
-                )
-            )
+            videoA.append(dict(image=imageA, pts=curve.sample_spline((tckA[0], tckA[1].T, 3), delta=10)))
+            videoB.append(dict(image=imageB, pts=curve.sample_spline((tckB[0], tckB[1].T, 3), delta=10)))
         video_pairs.append(videoA)
         video_pairs.append(videoB)
 
@@ -115,18 +98,32 @@ def split_fn(
 
 
 class Guide3D(BaseGuide3D):
+    """Guide3D dataset
+
+    The dataset contains images and their corresponding t, c, u values,
+    where:
+
+    t: knot vector
+    c: spline coefficients
+    u: parameter values
+
+    K, the degree of the spline, is 3.
+    T, the knot vector, is of length n + k + 1, where n is the number of control
+    points. The first k + 1 values are 0.
+    """
+
     k = 3
 
     c_min = 0
     c_max = 1024
     t_min = 0
     t_max = 1274
-    max_seq_len = 30
+    max_seq_len = 19
 
     def __init__(
         self,
         dataset_path: Union[str, Path],
-        annotations_file: Union[str, Path] = "points.json",
+        annotations_file: Union[str, Path] = "sphere_wo_reconstruct.json",
         image_transform: transforms.Compose = None,
         c_transform: callable = None,
         t_transform: callable = None,
@@ -150,7 +147,7 @@ class Guide3D(BaseGuide3D):
         self.c_transform = c_transform
         self.t_transform = t_transform
         self.transform_both = transform_both
-        self.max_length = self._get_max_length()
+        self.max_seq_len = self._get_max_length()
 
     def __len__(self):
         return len(self.data)
@@ -159,34 +156,31 @@ class Guide3D(BaseGuide3D):
         max_length = 0
         for video in self.all_data:
             for sample in video:
-                c = sample["tck"]
-                max_length = max(max_length, len(c))
+                pts = sample["pts"]
+                max_length = max(max_length, len(pts))
         return max_length
 
     def __getitem__(self, idx):
         sample = self.data[idx]
         img = read_image(str(self.dataset_path / sample["image"]))
 
-        c = sample["tck"]
-
-        c = torch.tensor(c, dtype=torch.float32)
-
-        if self.c_transform:
-            c = self.c_transform(c)
+        pts = sample["pts"]
 
         if self.image_transform:
             img = self.image_transform(img)
 
-        seq_len = len(c)
-        target_seq = F.pad(c, (0, 0, 0, self.max_length - seq_len))
+        pts = torch.Tensor(pts).to(torch.float32)
+        seq_len = pts.shape[0]
+        target_seq = F.pad(pts, (0, 0, 0, self.max_seq_len - seq_len))
 
-        target_mask = torch.ones(self.max_length, dtype=torch.int32)
+        target_mask = torch.ones(self.max_seq_len, dtype=torch.int32)
         target_mask[seq_len:] = 0
 
         return img, target_seq, target_mask
 
 
 def quick_show(img, ts, cs, seq_len, index):
+    import cv2
     import matplotlib.pyplot as plt
     from scipy.interpolate import splev
 
@@ -212,37 +206,10 @@ def quick_show(img, ts, cs, seq_len, index):
     plt.show()
 
 
-def visualize_bezier(control_points, img):
-    # Reconstruct the Bezier curve from the control points
-    t_values = np.linspace(0, 1, 100)  # Parameter values for the smooth curve
-    bezier_points = curve.bezier_curve(control_points, t_values)
-    # Visualization
-    plt.figure(figsize=(8, 6))
-
-    # Plot the fitted Bézier curve
-    plt.plot(bezier_points[:, 0], bezier_points[:, 1], "b-", label="Fitted Bézier Curve", linewidth=2)
-
-    # Plot the control points and connect them with dashed lines
-    plt.plot(control_points[:, 0], control_points[:, 1], "go--", label="Control Points", markersize=8)
-
-    # Highlight control points with green circles
-    for i, cp in enumerate(control_points):
-        plt.text(cp[0], cp[1], f"P{i}", fontsize=12, color="green")
-
-    # Label the axes and add a legend
-    plt.title(f"Bézier Curve Fitting (Degree {len(control_points) - 1})")
-    plt.imshow(img, cmap="gray")
-    plt.xlabel("X-axis")
-    plt.ylabel("Y-axis")
-    plt.legend()
-    plt.grid(True)
-
-    # Display the plot
-    plt.show()
-    plt.close()
-
-
 def test_dataset():
+    import guide3d.vars as vars
+    import matplotlib.pyplot as plt
+
     dataset_path = vars.dataset_path
     dataset = Guide3D(
         dataset_path,
@@ -253,12 +220,12 @@ def test_dataset():
     print(dataset._get_max_length())
     for batch in dataloader:
         img, target_seq, target_mask = batch
-        print(target_seq.shape)
-        print(target_mask.shape)
-        print(target_mask)
         plt.imshow(img[0][0], cmap="gray")
-        plt.plot(target_seq[0, :, 0], target_seq[0, :, 1], "ro")
+        print(target_seq.shape)
+        plt.plot(target_seq[0][:, 0], target_seq[0][:, 1], "ro")
         plt.show()
+
+        exit()
         continue
         print("Ts shape", ts.shape)
         print("Cs shape", cs.shape)
