@@ -1,16 +1,56 @@
 from pathlib import Path
 
 import guide3d.utils.viz as viz
+import guide3d.vars as vars
 import matplotlib.pyplot as plt
 import numpy as np
 import trimesh
 
+INDEX = 0
+
+
+def make_bspline_plot(imgA, tckA, uA, imgB, tckB, uB, ax=None):
+    global INDEX
+    import guide3d.representations.curve as curve
+
+    fig, axs = plt.subplots(1, 2, figsize=(5, 3))
+
+    control_ptsA = np.array(tckA[1]).T
+    control_ptsB = np.array(tckB[1]).T
+
+    sampledA = curve.sample_spline(tckA, uA, 200)
+    sampledB = curve.sample_spline(tckB, uB, 200)
+
+    imgA = plt.imread(vars.dataset_path / imgA)
+    imgB = plt.imread(vars.dataset_path / imgB)
+
+    axs[0].imshow(imgA, cmap="gray")
+    axs[1].imshow(imgB, cmap="gray")
+
+    axs[0].plot(sampledA[:, 0], sampledA[:, 1], "b-", label="Fitted Curve", linewidth=0.5)
+    axs[0].plot(control_ptsA[:, 0], control_ptsA[:, 1], "go--", label="Control Points", linewidth=0.5, markersize=1)
+
+    axs[1].plot(sampledB[:, 0], sampledB[:, 1], "b-", label="Fitted Curve", linewidth=0.5)
+    axs[1].plot(control_ptsB[:, 0], control_ptsB[:, 1], "go--", label="Control Points", linewidth=0.5, markersize=1)
+
+    # for cp in enumerate(control_ptsA):
+    #     axs[0].text(cp[1][0], cp[1][1], f"P{cp[0]}", fontsize=6, color="green")
+    # for cp in enumerate(control_ptsB):
+    #     axs[1].text(cp[1][0], cp[1][1], f"P{cp[0]}", fontsize=6, color="green")
+
+    for ax in axs:
+        ax.axis("off")
+
+    handles, labels = axs[0].get_legend_handles_labels()
+    fig.subplots_adjust(wspace=0.1)
+    fig.legend(handles, labels, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 0.9))
+    fig.savefig(f"samples/bspline/{INDEX}.png", bbox_inches="tight")
+    INDEX += 1
+
 
 def get_mesh(transformed=False):
     mesh = trimesh.load_mesh(Path(__file__).parent.parent / "assets/mesh.stl")
-    affine_matrix = np.load(
-        Path(__file__).parent.parent / "assets/transformation_matrix.npy"
-    )
+    affine_matrix = np.load(Path(__file__).parent.parent / "assets/transformation_matrix.npy")
     if transformed:
         mesh.apply_transform(affine_matrix)
     return mesh
@@ -78,9 +118,7 @@ def make_error_plot(mean_errors, std_errors, ax=None, **kwargs):
     )
     ax.set_ylabel("Error (pixels)")
     ax.set_xlabel("Point Index")
-    ax.grid(
-        True, which="both", axis="both", linestyle="--", linewidth=0.5, color="gray"
-    )
+    ax.grid(True, which="both", axis="both", linestyle="--", linewidth=0.5, color="gray")
     return ax
 
 
@@ -98,9 +136,7 @@ def make_error_plot_3D(mean_errors, std_errors, ax=None, **kwargs):
     )
     ax.set_ylabel("Error (mm)")
     ax.set_xlabel("Segment Index")
-    ax.grid(
-        True, which="both", axis="both", linestyle="--", linewidth=0.5, color="gray"
-    )
+    ax.grid(True, which="both", axis="both", linestyle="--", linewidth=0.5, color="gray")
     return ax
 
 
@@ -175,20 +211,14 @@ def error_plot_reprojection(points1, points2, P1, P2, F, ax=None):
     lines1 = np.array([F.dot(points2[i]) for i in range(points2.shape[0])])
     lines2 = np.array([F.T.dot(points1[i]) for i in range(points1.shape[0])])
     # Compute reprojection errors
-    errors1 = np.abs(np.diag(points1.dot(P1.T.dot(lines1.T)))) / np.linalg.norm(
-        lines1[:, :2], axis=1
-    )
-    errors2 = np.abs(np.diag(points2.dot(P2.T.dot(lines2.T)))) / np.linalg.norm(
-        lines2[:, :2], axis=1
-    )
+    errors1 = np.abs(np.diag(points1.dot(P1.T.dot(lines1.T)))) / np.linalg.norm(lines1[:, :2], axis=1)
+    errors2 = np.abs(np.diag(points2.dot(P2.T.dot(lines2.T)))) / np.linalg.norm(lines2[:, :2], axis=1)
     ax.plot(errors1, label="Image 1")
     ax.plot(errors2, label="Image 2")
     ax.set_xlabel("Point Index")
     ax.set_ylabel("Reprojection Error (px)")
     ax.legend()
-    ax.grid(
-        True, which="both", axis="both", linestyle="--", linewidth=0.5, color="gray"
-    )
+    ax.grid(True, which="both", axis="both", linestyle="--", linewidth=0.5, color="gray")
     return ax
 
 

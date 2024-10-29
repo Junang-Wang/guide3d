@@ -66,7 +66,6 @@ class BaseGuide3D(data.Dataset):
 
         if isinstance(dataset_path, str):
             self.dataset_path = Path(dataset_path).expanduser().resolve()
-
         else:
             self.dataset_path = dataset_path
 
@@ -142,7 +141,7 @@ def flatten(
 
 if __name__ == "__main__":
     dataset = BaseGuide3D(
-        dataset_path="~/test",
+        dataset_path="~/test-2",
         annotations_file="sphere.json",
         split_fn=lambda x, y: (x, x, x),
         process_data=lambda x: x,

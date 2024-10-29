@@ -131,6 +131,8 @@ def visualize_mask(img, mask):
     ax[0].imshow(img, cmap="gray")
     ax[1].imshow(mask, cmap="gray")
     plt.show()
+    plt.close()
+    exit()
 
 
 def test_dataset():
@@ -138,10 +140,10 @@ def test_dataset():
 
     dataset_path = vars.dataset_path
     dataset = Guide3D(dataset_path, "sphere_wo_reconstruct.json")
-    dataloader = data.DataLoader(dataset, batch_size=16, shuffle=True)
+    dataloader = data.DataLoader(dataset, batch_size=1, shuffle=False)
     for batch in dataloader:
-        img, mask = batch
-        print(img.shape, mask.shape)
+        for img, mask in zip(batch):
+            visualize_mask(img, mask)
         break
 
 

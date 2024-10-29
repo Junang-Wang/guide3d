@@ -1,11 +1,13 @@
 from pathlib import Path
 from typing import Dict, List, Union
 
+import cv2
+import guide3d.vars as vars
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import torch.nn.functional as F
 from guide3d.dataset.dataset_utils import BaseGuide3D
-from guide3d.utils.utils import preprocess_tck
+from guide3d.representations import curve
 from torch.utils import data
 from torchvision import transforms
 from torchvision.io import read_image
@@ -47,6 +49,14 @@ def t_untransform(t):
 def unnorm(img):
     img = img * 0.5 + 0.5
     return img
+
+
+def preprocess_tck(
+    tck: Dict,
+) -> List:
+    c = tck["c"]
+    c = np.array(c)
+    return c
 
 
 def process_data(
@@ -124,12 +134,12 @@ class Guide3D(BaseGuide3D):
     c_max = 1024
     t_min = 0
     t_max = 1274
-    max_seq_len = 19
+    max_seq_len = 8
 
     def __init__(
         self,
         dataset_path: Union[str, Path],
-        annotations_file: Union[str, Path] = "sphere.json",
+        annotations_file: Union[str, Path] = "sphere_wo_reconstruct_bezier.json",
         image_transform: transforms.Compose = None,
         c_transform: callable = None,
         t_transform: callable = None,
@@ -162,25 +172,17 @@ class Guide3D(BaseGuide3D):
         max_length = 0
         for video in self.all_data:
             for sample in video:
-                t, c, _ = sample["tck"]
-                max_length = max(max_length, len(t) - 4)
+                c = sample["tck"]
+                max_length = max(max_length, len(c))
         return max_length
 
     def __getitem__(self, idx):
         sample = self.data[idx]
         img = read_image(str(self.dataset_path / sample["image"]))
 
-        t, c, _ = sample["tck"]
+        c = sample["tck"]
 
-        # t has 4 zeros at the beginning
-        t = torch.tensor(t[4:], dtype=torch.float32).unsqueeze(-1)
         c = torch.tensor(c, dtype=torch.float32)
-
-        if self.transform_both:
-            img, t, c = self.transform_both(img, t, c)
-
-        if self.t_transform:
-            t = self.t_transform(t)
 
         if self.c_transform:
             c = self.c_transform(c)
@@ -188,8 +190,8 @@ class Guide3D(BaseGuide3D):
         if self.image_transform:
             img = self.image_transform(img)
 
-        seq_len = torch.tensor(len(t), dtype=torch.int32)
-        target_seq = F.pad(torch.cat([t, c], dim=-1), (0, 0, 0, self.max_length - seq_len))
+        seq_len = torch.tensor(len(c), dtype=torch.int32)
+        target_seq = c
 
         target_mask = torch.ones(self.max_length, dtype=torch.int32)
         target_mask[seq_len:] = 0
@@ -198,7 +200,6 @@ class Guide3D(BaseGuide3D):
 
 
 def quick_show(img, ts, cs, seq_len, index):
-    import cv2
     import matplotlib.pyplot as plt
     from scipy.interpolate import splev
 
@@ -224,13 +225,40 @@ def quick_show(img, ts, cs, seq_len, index):
     plt.show()
 
 
-def test_dataset():
-    import guide3d.vars as vars
+def visualize_bezier(control_points, img):
+    # Reconstruct the Bezier curve from the control points
+    t_values = np.linspace(0, 1, 100)  # Parameter values for the smooth curve
+    bezier_points = curve.bezier_curve(control_points, t_values)
+    # Visualization
+    plt.figure(figsize=(8, 6))
 
+    # Plot the fitted Bézier curve
+    plt.plot(bezier_points[:, 0], bezier_points[:, 1], "b-", label="Fitted Bézier Curve", linewidth=2)
+
+    # Plot the control points and connect them with dashed lines
+    plt.plot(control_points[:, 0], control_points[:, 1], "go--", label="Control Points", markersize=8)
+
+    # Highlight control points with green circles
+    for i, cp in enumerate(control_points):
+        plt.text(cp[0], cp[1], f"P{i}", fontsize=12, color="green")
+
+    # Label the axes and add a legend
+    plt.title(f"Bézier Curve Fitting (Degree {len(control_points) - 1})")
+    plt.imshow(img, cmap="gray")
+    plt.xlabel("X-axis")
+    plt.ylabel("Y-axis")
+    plt.legend()
+    plt.grid(True)
+
+    # Display the plot
+    plt.show()
+    plt.close()
+
+
+def test_dataset():
     dataset_path = vars.dataset_path
     dataset = Guide3D(
         dataset_path,
-        "sphere_wo_reconstruct_norm.json",
         image_transform=image_transform,
     )
     dataloader = data.DataLoader(dataset, batch_size=2, shuffle=False)
@@ -238,12 +266,10 @@ def test_dataset():
     print(dataset._get_max_length())
     for batch in dataloader:
         img, target_seq, target_mask = batch
-        ts = target_seq[:, :, 0]
-        cs = target_seq[:, :, 1:]
-        print(ts[0])
-        print(cs[0])
-
-        exit()
+        print(target_seq.shape)
+        print(target_mask.shape)
+        print(target_mask)
+        visualize_bezier(target_seq[0].cpu().numpy(), img[0][0].cpu().numpy())
         continue
         print("Ts shape", ts.shape)
         print("Cs shape", cs.shape)

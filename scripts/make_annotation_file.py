@@ -2,28 +2,65 @@
 
 import json
 
-import calibration
 import cv2
+import guide3d.calibration as calibration
+import guide3d.utils.viz as viz
+import guide3d.vars as vars
 import matplotlib.pyplot as plt
 import numpy as np
-import utils.viz as viz
-import vars
+from guide3d.reconstruction import reconstruct
+from guide3d.representations import curve
+from guide3d.utils.fn import project_points
 from parse_cvat import get_structured_dataset
-from reconstruction import reconstruct
-from representations import curve
 from tqdm import tqdm
-from utils.fn import project_points
 
 i = 0
 
 
+def viz_bspline(img, tck, u):
+    control_points = np.array(tck[1]).T
+    sampled_pts = curve.sample_spline(tck, u, delta=0.01)
+
+    # fig, ax = plt.subplots(1, 2, figsize=(5, 3))
+
+    # set figure size
+    plt.figure(figsize=(5, 5))
+
+    # Plot the fitted Bézier curve
+    plt.plot(sampled_pts[:, 0], sampled_pts[:, 1], "b-", label="Fitted Bézier Curve", linewidth=2)
+
+    # Plot the control points and connect them with dashed lines
+    plt.plot(control_points[:, 0], control_points[:, 1], "go--", label="Control Points", markersize=8)
+
+    # Highlight control points with green circles
+    for i, cp in enumerate(control_points):
+        plt.text(cp[0], cp[1], f"P{i}", fontsize=12, color="green")
+
+    # Label the axes and add a legend
+    img = plt.imread(vars.dataset_path / img)
+    plt.title("B-Spline Curve Fitting")
+    plt.imshow(img, cmap="gray")
+    plt.xlabel("X-axis")
+    plt.ylabel("Y-axis")
+    plt.legend()
+    plt.savefig("bspline.png")
+    # plt.grid(True)
+
+    plt.show()
+    plt.close()
+
+
 def viz_curve(img, tck, u, pts=None, show=False):
     img = plt.imread(vars.dataset_path / img)
-    img = viz.convert_to_color(img)
-    img = curve_viz.draw_curve(img, tck, u)
-    if pts is not None:
-        pts = np.array(pts, dtype=np.int32)
-        img = viz.draw_polyline(img, pts, color=(0, 255, 0))
+    pts = curve.sample_spline(tck, u, delta=10)
+
+    plt.imshow(img, cmap="gray")
+    plt.plot(tck[1][0], tck[1][1], "bo")
+    plt.plot(pts[:, 0], pts[:, 1], "r")
+    plt.show()
+    return
+
+    cv2.polylines(img, [pts], isClosed=False, color=255)
 
     new_h = int(img.shape[0] * 0.5)
     new_w = int(img.shape[1] * 0.5)
@@ -53,9 +90,7 @@ def remove_close_points(pts, delta):
     return cleaned_pts
 
 
-def viz_curve_w_reprojection(
-    imgA, imgB, tckA, tckB, tck3d, uA, uB, u3d, originalA, originalB, show=False
-):
+def viz_curve_w_reprojection(imgA, imgB, tckA, tckB, tck3d, uA, uB, u3d, originalA, originalB, show=False):
     viz_path = imgA.split("/")[0]
     viz_path = viz_path.split("-")[:-1]
     viz_path = "-".join(viz_path)
@@ -174,9 +209,7 @@ def parse_into_dict(annotations: list) -> dict:
 
         dataset_key = "-".join(str(value) for value in properties.values())
         dataset.setdefault(dataset_key, {})
-        dataset[dataset_key][frame_number] = dict(
-            frame_number=frame_number, **annotation
-        )
+        dataset[dataset_key][frame_number] = dict(frame_number=frame_number, **annotation)
 
     return dataset
 
@@ -233,13 +266,10 @@ def make_json(dataset: dict, with_reconstruction: bool = False):
 
 
 def decompose_tck(tck):
-    assert isinstance(tck, list) or isinstance(
-        tck, tuple
-    ), f"tck should be a tuple or list, but got {type(tck)}\n"
+    assert isinstance(tck, list) or isinstance(tck, tuple), f"tck should be a tuple or list, but got {type(tck)}\n"
 
     t, c, k = tck
     assert isinstance(t, np.ndarray), f"t should be a numpy array, but got {type(t)}\n"
-    assert isinstance(c, list), f"c should be a list, but got {type(c)}\n"
     assert isinstance(k, int), f"k should be an integer, but got {type(k)}\n"
 
     t = t.tolist()
@@ -248,7 +278,38 @@ def decompose_tck(tck):
     return t, c, k
 
 
-def make_json_spherical(dataset: dict, with_reconstruction: bool = False):
+def visualize_bezier(control_points, img):
+    # Reconstruct the Bezier curve from the control points
+    t_values = np.linspace(0, 1, 100)  # Parameter values for the smooth curve
+    bezier_points = curve.bezier_curve(control_points, t_values)
+    # Visualization
+    plt.figure(figsize=(8, 6))
+
+    # Plot the fitted Bézier curve
+    plt.plot(bezier_points[:, 0], bezier_points[:, 1], "b-", label="Fitted Bézier Curve", linewidth=2)
+
+    # Plot the control points and connect them with dashed lines
+    plt.plot(control_points[:, 0], control_points[:, 1], "go--", label="Control Points", markersize=8)
+
+    # Highlight control points with green circles
+    for i, cp in enumerate(control_points):
+        plt.text(cp[0], cp[1], f"P{i}", fontsize=12, color="green")
+
+    # Label the axes and add a legend
+    img = plt.imread(vars.dataset_path / img)
+    plt.title(f"Bézier Curve Fitting (Degree {len(control_points) - 1})")
+    plt.imshow(img, cmap="gray")
+    plt.xlabel("X-axis")
+    plt.ylabel("Y-axis")
+    plt.legend()
+    plt.grid(True)
+
+    # Display the plot
+    plt.show()
+    plt.close()
+
+
+def make_annot_file(dataset: dict, with_reconstruction: bool = False):
     root = []
     valid_frames = 0
 
@@ -268,19 +329,22 @@ def make_json_spherical(dataset: dict, with_reconstruction: bool = False):
             imageB = annotation["image2"]
             ptsA = reorder_points(annotation["points1"].tolist())
             ptsB = reorder_points(annotation["points2"].tolist())
-            ptsA = remove_close_points(ptsA, 20)
-            ptsB = remove_close_points(ptsB, 20)
+            ptsA = remove_close_points(ptsA, 2)
+            ptsB = remove_close_points(ptsB, 2)
+            ptsA = np.clip(ptsA, 0, 1024)
+            ptsB = np.clip(ptsB, 0, 1024)
             originalA = np.copy(ptsA)
             originalB = np.copy(ptsB)
 
             ptsA = np.array(ptsA)
             ptsB = np.array(ptsB)
 
-            tckA, uA = curve.fit_spline(ptsA)
-            tckB, uB = curve.fit_spline(ptsB)
+            tckA, uA = curve.fit_spline_2(ptsA)
+            tckB, uB = curve.fit_spline_2(ptsB)
+            print(tckA)
 
-            # vizA = viz_curve(imageA, tckA, uA, ptsA, show=True)
-            # vizB = viz_curve(imageB, tckB, uB, ptsB)
+            viz_curve(imageA, tckA, uA, ptsA, show=True)
+            # viz_curve(imageB, tckB, uB, ptsB)
 
             # needed for JSON
             tA, cA, kA = decompose_tck(tckA)
@@ -345,6 +409,7 @@ def make_json_spherical(dataset: dict, with_reconstruction: bool = False):
         root.append(video_pair)
     print(f"Valid frames: {valid_frames}")
 
+    exit()
     return root
 
 
@@ -353,12 +418,12 @@ def main():
 
     dataset = parse_into_dict(dataset)
 
-    json_data = make_json(dataset)
-    with open("data/annotations/raw.json", "w") as f:
-        json.dump(json_data, f, indent=2)
+    # json_data = make_json(dataset)
+    # with open("data/annotations/raw.json", "w") as f:
+    #     json.dump(json_data, f, indent=2)
 
-    json_data = make_json_spherical(dataset, with_reconstruction=False)
-    with open("data/annotations/sphere_wo_reconstruct.json", "w") as f:
+    json_data = make_annot_file(dataset, with_reconstruction=False)
+    with open("data/annotations/sphere_wo_reconstruct_bezier.json", "w") as f:
         json.dump(json_data, f, indent=2)
 
     #

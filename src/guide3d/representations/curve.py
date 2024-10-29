@@ -10,6 +10,33 @@ def compute_rss(points, bezier_points):
     return np.sum((points - bezier_points) ** 2)
 
 
+def sample_and_remake_spline(tck, u, delta=0.01):
+    # Generate uniform u values based on delta
+    u_new = np.arange(0, 1 + delta, delta)
+    u_new = np.clip(u_new, 0, 1)  # Ensure u_new is in range [0, 1]
+
+    # Sample the curve at new u values
+    x_new, y_new = splev(u_new, tck)
+
+    # Use sampled points as new knots
+    new_points = np.vstack([x_new, y_new]).T
+    tck_new, u_new = splprep([x_new, y_new], s=0, k=3)
+
+    return tck_new, u_new, new_points
+
+
+def fit_spline_2(pts: np.ndarray, s: float = None, k: int = 3, eps: float = 1e-10):
+    x = pts[:, 0]
+    y = pts[:, 1]
+    distances = np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2 + eps)
+    cumulative_distances = np.insert(np.cumsum(distances), 0, 0)
+    cumulative_distances = cumulative_distances
+
+    tck, u = splprep([x, y], s=s, k=k, u=cumulative_distances)
+    tck, u, pts = sample_and_remake_spline(tck, u, 1)
+    return tck, u
+
+
 def fit_spline(pts: np.ndarray, s: float = None, k: int = 3, eps: float = 1e-10):
     dims = pts.shape[1]
     if dims == 2:
@@ -17,6 +44,7 @@ def fit_spline(pts: np.ndarray, s: float = None, k: int = 3, eps: float = 1e-10)
         y = pts[:, 1]
         distances = np.sqrt(np.diff(x) ** 2 + np.diff(y) ** 2 + eps)
         cumulative_distances = np.insert(np.cumsum(distances), 0, 0)
+        cumulative_distances = cumulative_distances / cumulative_distances[-1]
 
         tck, u = splprep([x, y], s=s, k=k, u=cumulative_distances)
         return tck, u
