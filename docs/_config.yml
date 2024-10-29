@@ -1,8 +1,25 @@
-title: Just the Docs Template
-description: A starter template for a Jeykll site using the Just the Docs theme!
+title: Guide3D
+description: A Bi-planar Segmentation and 3D Reconstruction X-ray Dataset
 theme: just-the-docs
+
+# logo: "/assets/images/dataset_overview.jpg"
 
 url: https://airvlab.github.io/guide3d/
 
+math: mathjax
+color_scheme: light
+
 aux_links:
-  Template Repository: https://airvlab.github.io/guide3d/
+  Github: https://github.com/airvlab/guide3d
+  Dataset: https://drive.google.com/file/d/11OcFDTwadJxhHKv9hJMxDL13eIqXMXSO/view?usp=drive_link
+
+# External navigation links
+nav_external_links:
+  - title: Dataset
+    url: https://drive.google.com/file/d/11OcFDTwadJxhHKv9hJMxDL13eIqXMXSO/view?usp=drive_link
+    hide_icon: false # set to true to hide the external link icon - defaults to false
+    opens_in_new_tab: true # set to true to open this link in a new tab - defaults to false
+  - title: Github
+    url: https://github.com/airvlab/guide3d
+    hide_icon: false # set to true to hide the external link icon - defaults to false
+    opens_in_new_tab: true # set to true to open this link in a new tab - defaults to false
