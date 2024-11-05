@@ -3,19 +3,16 @@ from typing import Dict, List, Union
 
 import cv2
 import numpy as np
-from guide3d.dataset.dataset_utils import BaseGuide3D
-from guide3d.representations import curve
-from guide3d.utils.utils import preprocess_tck
 from torch.utils import data
 from torchvision import transforms
 
+from guide3d.dataset.dataset_utils import BaseGuide3D
+from guide3d.utils.utils import preprocess_tck, sample_spline, split_fn_image
+
 image_transforms = transforms.Compose(
     [
-        # transforms.Resize((256, 256)),
         transforms.Lambda(lambda x: x / 255.0),
         transforms.Normalize((0.5,), (0.5,)),
-        # gray to RGB
-        # transforms.Lambda(lambda x: x.repeat(3, 1, 1))
     ]
 )
 
@@ -23,7 +20,8 @@ image_transforms = transforms.Compose(
 def make_mask(tck, u, delta=0.1):
     """make a segmentation mask from a polyline"""
     tck = (tck[0], tck[1].T, tck[2])
-    pts = curve.sample_spline(tck, u, delta=delta).astype(np.int32)
+
+    pts = sample_spline(tck, u, delta=delta).astype(np.int32)
 
     mask = np.zeros((1024, 1024), dtype=np.uint8)
     pts = np.array(pts, dtype=np.int32)
@@ -34,9 +32,7 @@ def make_mask(tck, u, delta=0.1):
     return mask
 
 
-def process_data(
-    data: Dict,
-) -> List:
+def process_data(data: Dict) -> List:
     video_pairs = []
     for video_pair in data:
         videoA = []
@@ -90,7 +86,7 @@ class Guide3D(BaseGuide3D):
     def __init__(
         self,
         dataset_path: Union[str, Path],
-        annotations_file: Union[str, Path] = "sphere.json",
+        annotations_file: Union[str, Path] = "b_spline.json",
         image_transform: transforms.Compose = None,
         mask_transform: callable = None,
         split: str = "train",
@@ -101,7 +97,7 @@ class Guide3D(BaseGuide3D):
             dataset_path=dataset_path,
             annotations_file=annotations_file,
             process_data=process_data,
-            split_fn=split_fn,
+            split_fn=split_fn_image,
             download=download,
             split=split,
             split_ratio=split_ratio,
@@ -124,28 +120,19 @@ class Guide3D(BaseGuide3D):
         return img, mask
 
 
-def visualize_mask(img, mask):
-    import matplotlib.pyplot as plt
-
-    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-    ax[0].imshow(img, cmap="gray")
-    ax[1].imshow(mask, cmap="gray")
-    plt.show()
-    plt.close()
-    exit()
-
-
-def test_dataset():
+def main():
     import guide3d.vars as vars
 
-    dataset_path = vars.dataset_path
-    dataset = Guide3D(dataset_path, "sphere_wo_reconstruct.json")
+    dataset = Guide3D(vars.dataset_path, "b_spline.json")
     dataloader = data.DataLoader(dataset, batch_size=1, shuffle=False)
+    print(len(dataset))
+    batch = next(iter(dataloader))
     for batch in dataloader:
-        for img, mask in zip(batch):
-            visualize_mask(img, mask)
-        break
+        img, mask = batch
+        print(img.shape)
+        print(mask.shape)
+        exit()
 
 
 if __name__ == "__main__":
-    test_dataset()
+    main()
