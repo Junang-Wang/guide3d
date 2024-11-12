@@ -6,6 +6,8 @@ url: https://airvlab.github.io/guide3d/
 
 math: mathjax
 color_scheme: light
+compress_html:
+  blanklines: false
 
 aux_links:
   Github: https://github.com/airvlab/guide3d

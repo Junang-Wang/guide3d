@@ -12,7 +12,7 @@ To address this gap, we introduce **Guide3D**—a bi-planar X-ray dataset tailor
 
 By providing Guide3D and accompanying code, we aim to empower the research community, facilitating the development of innovative machine learning techniques that enhance the precision and efficiency of endovascular procedures. Guide3D not only fills a crucial gap in available datasets but also paves the way for advancing safer, more effective interventions in endovascular surgery.
 
-![Dataset Overview](/assets/images/dataset_overview.jpg)
+![Dataset Overview]({{ site.baseurl }}/assets/images/dataset_overview.jpg)
 
 | Sample Type | Radifocus™ Guide Wire (Angled) | Nitrex Guidewire (Straight) | Total |
 |-------------|--------------------------------|-----------------------------|-------|

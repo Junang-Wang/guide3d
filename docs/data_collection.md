@@ -5,7 +5,7 @@ title: Data Collection
 
 # Data Collection Setup
 
-![Setup](/assets/images/materials_overview.jpg)
+![Setup]({{ site.baseurl }}/assets/images/materials_overview.jpg)
 
 ## X-ray System
 
@@ -23,8 +23,8 @@ This bi-planar configuration enables imaging from two perpendicular planes, faci
 Our data collection utilizes a half-body vascular phantom from Elastrat Sarl Ltd., Switzerland, housed in a transparent, closed water circuit that mimics human blood flow dynamics. This model is constructed from soft silicone and incorporates continuous compact pumps to simulate real blood flow conditions. It is anatomically accurate, based on detailed postmortem vascular casts, reflecting human vasculature with high fidelity as documented in prominent research~\cite{martin1998vitro,gailloud1999vitro}. This anatomical model is central to achieving realistic simulations of vascular scenarios, enabling reliable endovascular tool tracking and navigation data.
 
 <div class="d-flex flex-justify-around">
-  <img src="/assets/images/nitrex_guidewire.jpg" width="300"/>
-  <img src="/assets/images/radifocus_guidewire.jpg" width="300"/>
+  <img src="{{ site.baseurl }}/assets/images/nitrex_guidewire.jpg" width="300"/>
+  <img src="{{ site. baseurl }}/assets/images/radifocus_guidewire.jpg" width="300"/>
 </div>
 
 ## Surgical Tools
