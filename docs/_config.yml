@@ -2,8 +2,6 @@ title: Guide3D
 description: A Bi-planar Segmentation and 3D Reconstruction X-ray Dataset
 theme: just-the-docs
 
-# logo: "/assets/images/dataset_overview.jpg"
-
 url: https://airvlab.github.io/guide3d/
 
 math: mathjax
