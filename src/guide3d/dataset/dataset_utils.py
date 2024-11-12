@@ -97,10 +97,12 @@ class BaseGuide3D(data.Dataset):
             self.data = test_data
 
     def _download_data(self):
-        id = "11OcFDTwadJxhHKv9hJMxDL13eIqXMXSO"
+        id = "1oRC_cQwGzrZ1XspPr9zwu6_rjWQE_kyI"
 
-        if not self.dataset_path.exists():
-            self.dataset_path.mkdir()
+        if self.dataset_path.exists():
+            raise Exception("Dataset already downloaded.")
+
+        self.dataset_path.mkdir(parents=True)
 
         zip_path = self.dataset_path / "temp.zip"
 

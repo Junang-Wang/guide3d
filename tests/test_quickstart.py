@@ -1,17 +1,3 @@
-# Guide3D
-
-## TODO's
-
-- [x] Clean and document the segmentation code
-- [ ] Clean and document the image based code
-- [ ] Clean the repository
-- [ ] Add quick-start
-- [ ] Add detailed explanation on README
-- [ ] Explain the folder structure
-
-## Quickstart
-
-```python
 from torch.utils import data
 
 from guide3d.dataset.image.segment import Guide3D
@@ -32,4 +18,3 @@ for batch in dataloader:
     print(img.shape)
     print(mask.shape)
     exit()
-```

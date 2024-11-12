@@ -7,7 +7,7 @@ from torch.utils import data
 from torchvision import transforms
 
 from guide3d.dataset.dataset_utils import BaseGuide3D
-from guide3d.utils.utils import preprocess_tck, sample_spline, split_fn_image
+from guide3d.utils import split_fn_image
 
 image_transforms = transforms.Compose(
     [
@@ -17,15 +17,12 @@ image_transforms = transforms.Compose(
 )
 
 
-def make_mask(tck, u, delta=0.1):
+def make_mask(pts: np.ndarray):
     """make a segmentation mask from a polyline"""
-    tck = (tck[0], tck[1].T, tck[2])
-
-    pts = sample_spline(tck, u, delta=delta).astype(np.int32)
 
     mask = np.zeros((1024, 1024), dtype=np.uint8)
-    pts = np.array(pts, dtype=np.int32)
     pts = pts.reshape((-1, 1, 2))
+
     cv2.polylines(mask, [pts], isClosed=False, color=255, thickness=2)
     mask = mask / 255
     mask = mask.astype(np.uint8)
@@ -38,25 +35,21 @@ def process_data(data: Dict) -> List:
         videoA = []
         videoB = []
         for frame in video_pair["frames"]:
-            imageA = frame["cameraA"]["image"]
-            imageB = frame["cameraB"]["image"]
-
-            tckA = preprocess_tck(frame["cameraA"]["tck"])
-            tckB = preprocess_tck(frame["cameraB"]["tck"])
-
-            uA = np.array(frame["cameraA"]["u"]).astype(np.float32)
-            uB = np.array(frame["cameraB"]["u"]).astype(np.float32)
+            imageA = frame["camera1"]["image"]
+            imageB = frame["camera2"]["image"]
+            pointsA = np.array(frame["camera1"]["points"], np.int32)
+            pointsB = np.array(frame["camera2"]["points"], np.int32)
 
             videoA.append(
                 dict(
                     image=imageA,
-                    mask=make_mask(tckA, uA),
+                    mask=make_mask(pointsA),
                 )
             )
             videoB.append(
                 dict(
                     image=imageB,
-                    mask=make_mask(tckB, uB),
+                    mask=make_mask(pointsB),
                 )
             )
         video_pairs.append(videoA)

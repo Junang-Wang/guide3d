@@ -1,9 +1,5 @@
-import os
-import zipfile
-from pathlib import Path
 from typing import Dict, List
 
-import gdown
 import numpy as np
 from scipy.interpolate import splev
 
@@ -24,26 +20,6 @@ def preprocess_tck(tck: Dict) -> List:
     k = int(k)
 
     return t, c, k
-
-
-def download_data(path: Path):
-    id = "1eCRDajlUd3fVWdNcRJjskpu_H3onx039"
-
-    if not path.exists():
-        path.mkdir()
-
-    zip_path = path / "temp.zip"
-
-    print("Downloading file with gdrive...")
-    gdown.download(id=id, output=zip_path.as_posix(), quiet=False)
-
-    print("Extracting contents...")
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-        zip_ref.extractall(path)
-
-    print(f"Extracted contents to {path}")
-
-    os.remove(zip_path)
 
 
 def sample_spline(tck: tuple, u: list = None, n: int = None, delta: float = None):
