@@ -15,6 +15,8 @@ back_to_top_text: "Back to top"
 {:toc}
 </details>
 
+---
+
 ## Installation
 
 ### Prerequisites

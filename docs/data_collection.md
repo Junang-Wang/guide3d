@@ -3,6 +3,17 @@ layout: default
 title: Data Collection
 ---
 
+<details open markdown="block">
+  <summary>
+    Table of contents
+  </summary>
+  {: .text-delta }
+1. TOC
+{:toc}
+</details>
+
+---
+
 # Data Collection Setup
 
 ![Setup]({{ site.baseurl }}/assets/images/materials_overview.jpg)
