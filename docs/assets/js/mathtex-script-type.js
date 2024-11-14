@@ -25,7 +25,6 @@ scripts.forEach(function (script) {
       macros,
     });
   } catch (err) {
-    //console.error(err); linter doesn't like this
     katexElement.textContent = script.text;
   }
   script.parentNode.replaceChild(katexElement, script);
