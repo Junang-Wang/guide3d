@@ -3,9 +3,9 @@
 ## TODO's
 
 - [x] Clean and document the segmentation code
-- [ ] Clean and document the image based code
-- [ ] Clean the repository
-- [ ] Add quick-start
+- [x] Clean and document the image based code
+- [x] Clean the repository
+- [x] Add quick-start
 - [ ] Add detailed explanation on README
 - [ ] Explain the folder structure
 
@@ -32,4 +32,17 @@ for batch in dataloader:
     print(img.shape)
     print(mask.shape)
     exit()
+```
+
+
+## Reference
+If you are using our dataset, please cite us:
+
+```bib
+@article{jianu2024guide3d,
+  title={Guide3D: A Bi-planar X-ray Dataset for 3D Shape Reconstruction},
+  author={Jianu, Tudor and Huang, Baoru and Nguyen, Hoan and Bhattarai, Binod and Do, Tuong and Tjiputra, Erman and Tran, Quang and Berthet-Rayne, Pierre and Le, Ngan and Fichera, Sebastiano and others},
+  journal={arXiv preprint arXiv:2410.22224},
+  year={2024}
+}
 ```
