@@ -11,12 +11,12 @@ compress_html:
 
 aux_links:
   Github: https://github.com/airvlab/guide3d
-  Dataset: https://drive.google.com/file/d/11OcFDTwadJxhHKv9hJMxDL13eIqXMXSO/view?usp=drive_link
+  Dataset: https://huggingface.co/datasets/airvlab/guide3d
 
 # External navigation links
 nav_external_links:
   - title: Dataset
-    url: https://drive.google.com/file/d/11OcFDTwadJxhHKv9hJMxDL13eIqXMXSO/view?usp=drive_link
+    url: https://huggingface.co/datasets/airvlab/guide3d
     hide_icon: false # set to true to hide the external link icon - defaults to false
     opens_in_new_tab: true # set to true to open this link in a new tab - defaults to false
   - title: Github
